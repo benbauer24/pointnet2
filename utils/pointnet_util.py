@@ -68,8 +68,8 @@ def sample_and_group_all(xyz, points, use_xyz=True):
     Note:
         Equivalent to sample_and_group with npoint=1, radius=inf, use (0,0,0) as the centroid
     '''
-    batch_size = xyz.get_shape()[0].value
-    nsample = xyz.get_shape()[1].value
+    batch_size = xyz.get_shape()[0]                      #removed .value
+    nsample = xyz.get_shape()[1]                         #removed .value
     new_xyz = tf.constant(np.tile(np.array([0,0,0]).reshape((1,1,3)), (batch_size,1,1)),dtype=tf.float32) # (batch_size, 1, 3)
     idx = tf.constant(np.tile(np.array(range(nsample)).reshape((1,1,nsample)), (batch_size,1,1)))
     grouped_xyz = tf.reshape(xyz, (batch_size, 1, nsample, 3)) # (batch_size, npoint=1, nsample, 3)
@@ -104,10 +104,10 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
             idx: (batch_size, npoint, nsample) int32 -- indices for local regions
     '''
     data_format = 'NCHW' if use_nchw else 'NHWC'
-    with tf.variable_scope(scope) as sc:
+    with tf.compat.v1.variable_scope(scope) as sc:                    #replaced tf by tf.compat.v1
         # Sample and Grouping
         if group_all:
-            nsample = xyz.get_shape()[1].value
+            nsample = xyz.get_shape()[1]              #removed .value
             new_xyz, new_points, idx, grouped_xyz = sample_and_group_all(xyz, points, use_xyz)
         else:
             new_xyz, new_points, idx, grouped_xyz = sample_and_group(npoint, radius, nsample, xyz, points, knn, use_xyz)
@@ -124,7 +124,7 @@ def pointnet_sa_module(xyz, points, npoint, radius, nsample, mlp, mlp2, group_al
 
         # Pooling in Local Regions
         if pooling=='max':
-            new_points = tf.reduce_max(new_points, axis=[2], keep_dims=True, name='maxpool')
+            new_points = tf.reduce_max(new_points, axis=[2], keepdims=True, name='maxpool')  #changed keep_dims to keepdims
         elif pooling=='avg':
             new_points = tf.reduce_mean(new_points, axis=[2], keep_dims=True, name='avgpool')
         elif pooling=='weighted_avg':
@@ -169,7 +169,7 @@ def pointnet_sa_module_msg(xyz, points, npoint, radius_list, nsample_list, mlp_l
             new_points: (batch_size, npoint, \sum_k{mlp[k][-1]}) TF tensor
     '''
     data_format = 'NCHW' if use_nchw else 'NHWC'
-    with tf.variable_scope(scope) as sc:
+    with tf.compat.v1.variable_scope(scope) as sc:                                              #replaced tf by tf.compat.v1
         new_xyz = gather_point(xyz, farthest_point_sample(npoint, xyz))
         new_points_list = []
         for i in range(len(radius_list)):
@@ -207,10 +207,10 @@ def pointnet_fp_module(xyz1, xyz2, points1, points2, mlp, is_training, bn_decay,
         Return:
             new_points: (batch_size, ndataset1, mlp[-1]) TF tensor
     '''
-    with tf.variable_scope(scope) as sc:
+    with tf.compat.v1.variable_scope(scope) as sc:              #replaced tf by tf.compat.v1
         dist, idx = three_nn(xyz1, xyz2)
         dist = tf.maximum(dist, 1e-10)
-        norm = tf.reduce_sum((1.0/dist),axis=2,keep_dims=True)
+        norm = tf.reduce_sum((1.0/dist),axis=2,keepdims=True)          #changed keep_dims to keepdims
         norm = tf.tile(norm,[1,1,3])
         weight = (1.0/dist) / norm
         interpolated_points = three_interpolate(points2, idx, weight)

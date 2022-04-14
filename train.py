@@ -14,6 +14,7 @@ import os
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
+DATA_DIR = "/media/bedad/DATA/ETS/Recherche/programmation/data/pointnet2"     #Created DATA_DIR
 sys.path.append(BASE_DIR)
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
@@ -70,13 +71,13 @@ NUM_CLASSES = 40
 # Shapenet official train/test split
 if FLAGS.normal:
     assert(NUM_POINT<=10000)
-    DATA_PATH = os.path.join(ROOT_DIR, 'data/modelnet40_normal_resampled')
+    DATA_PATH = os.path.join(DATA_DIR, 'modelnet40_normal_resampled')                  #Changed ROOT_DIR to DATA_DIR
     TRAIN_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='train', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE)
     TEST_DATASET = modelnet_dataset.ModelNetDataset(root=DATA_PATH, npoints=NUM_POINT, split='test', normal_channel=FLAGS.normal, batch_size=BATCH_SIZE)
 else:
-    assert(NUM_POINT<=2048)
-    TRAIN_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/train_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=True)
-    TEST_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(BASE_DIR, 'data/modelnet40_ply_hdf5_2048/test_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=False)
+    assert(NUM_POINT<=2048)             #Changed BASE_DIR to DATA_DIR in the two lines below
+    TRAIN_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048/train_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=True)
+    TEST_DATASET = modelnet_h5_dataset.ModelNetH5Dataset(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048/test_files.txt'), batch_size=BATCH_SIZE, npoints=NUM_POINT, shuffle=False)
 
 def log_string(out_str):
     LOG_FOUT.write(out_str+'\n')
@@ -84,22 +85,22 @@ def log_string(out_str):
     print(out_str)
 
 def get_learning_rate(batch):
-    learning_rate = tf.train.exponential_decay(
+    learning_rate = tf.compat.v1.train.exponential_decay(
                         BASE_LEARNING_RATE,  # Base learning rate.
                         batch * BATCH_SIZE,  # Current index into the dataset.
                         DECAY_STEP,          # Decay step.
                         DECAY_RATE,          # Decay rate.
-                        staircase=True)
+                        staircase=True)                                                    # replaced tf by tf.compat.v1
     learning_rate = tf.maximum(learning_rate, 0.00001) # CLIP THE LEARNING RATE!
     return learning_rate        
 
 def get_bn_decay(batch):
-    bn_momentum = tf.train.exponential_decay(
+    bn_momentum = tf.compat.v1.train.exponential_decay(
                       BN_INIT_DECAY,
                       batch*BATCH_SIZE,
                       BN_DECAY_DECAY_STEP,
                       BN_DECAY_DECAY_RATE,
-                      staircase=True)
+                      staircase=True)                                       # replaced tf by tf.compat.v1
     bn_decay = tf.minimum(BN_DECAY_CLIP, 1 - bn_momentum)
     return bn_decay
 
@@ -107,56 +108,57 @@ def train():
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, labels_pl = MODEL.placeholder_inputs(BATCH_SIZE, NUM_POINT)
-            is_training_pl = tf.placeholder(tf.bool, shape=())
+            is_training_pl = tf.compat.v1.placeholder(tf.bool, shape=())   # replaced tf by tf.compat.v1
             
             # Note the global_step=batch parameter to minimize. 
             # That tells the optimizer to helpfully increment the 'batch' parameter
             # for you every time it trains.
-            batch = tf.get_variable('batch', [],
-                initializer=tf.constant_initializer(0), trainable=False)
+            batch = tf.compat.v1.get_variable('batch', [],
+                initializer=tf.constant_initializer(0), trainable=False)        # replaced tf by tf.compat.v1
             bn_decay = get_bn_decay(batch)
-            tf.summary.scalar('bn_decay', bn_decay)
+            tf.compat.v1.summary.scalar('bn_decay', bn_decay)          #all tf.summary replaced by tf.compat.v1.summary
 
             # Get model and loss 
             pred, end_points = MODEL.get_model(pointclouds_pl, is_training_pl, bn_decay=bn_decay)
             MODEL.get_loss(pred, labels_pl, end_points)
-            losses = tf.get_collection('losses')
+            losses = tf.compat.v1.get_collection('losses')                          # replaced tf by tf.compat.v1
             total_loss = tf.add_n(losses, name='total_loss')
-            tf.summary.scalar('total_loss', total_loss)
+            tf.compat.v1.summary.scalar('total_loss', total_loss)
             for l in losses + [total_loss]:
-                tf.summary.scalar(l.op.name, l)
+                tf.compat.v1.summary.scalar(l.op.name, l)
 
-            correct = tf.equal(tf.argmax(pred, 1), tf.to_int64(labels_pl))
+            correct = tf.equal(tf.argmax(pred, 1), tf.compat.v1.to_int64(labels_pl))    # replaced tf by tf.compat.v1
             accuracy = tf.reduce_sum(tf.cast(correct, tf.float32)) / float(BATCH_SIZE)
-            tf.summary.scalar('accuracy', accuracy)
+            tf.compat.v1.summary.scalar('accuracy', accuracy)
 
-            print "--- Get training operator"
+            print("--- Get training operator")
             # Get training operator
             learning_rate = get_learning_rate(batch)
-            tf.summary.scalar('learning_rate', learning_rate)
+            tf.compat.v1.summary.scalar('learning_rate', learning_rate)
+
             if OPTIMIZER == 'momentum':
                 optimizer = tf.train.MomentumOptimizer(learning_rate, momentum=MOMENTUM)
             elif OPTIMIZER == 'adam':
-                optimizer = tf.train.AdamOptimizer(learning_rate)
+                optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate)             # replaced tf by tf.compat.v1
             train_op = optimizer.minimize(total_loss, global_step=batch)
             
             # Add ops to save and restore all the variables.
-            saver = tf.train.Saver()
+            saver = tf.compat.v1.train.Saver()                                   # replaced tf by tf.compat.v1
         
         # Create a session
-        config = tf.ConfigProto()
+        config = tf.compat.v1.ConfigProto()                                # replaced tf by tf.compat.v1
         config.gpu_options.allow_growth = True
         config.allow_soft_placement = True
         config.log_device_placement = False
-        sess = tf.Session(config=config)
+        sess = tf.compat.v1.Session(config=config)                           # replaced tf by tf.compat.v1
 
         # Add summary writers
-        merged = tf.summary.merge_all()
-        train_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'train'), sess.graph)
-        test_writer = tf.summary.FileWriter(os.path.join(LOG_DIR, 'test'), sess.graph)
+        merged = tf.compat.v1.summary.merge_all()                                  # replaced tf by tf.compat.v1
+        train_writer = tf.compat.v1.summary.FileWriter(os.path.join(LOG_DIR, 'train'), sess.graph)  # replaced tf by tf.compat.v1
+        test_writer = tf.compat.v1.summary.FileWriter(os.path.join(LOG_DIR, 'test'), sess.graph)   # replaced tf by tf.compat.v1
 
         # Init variables
-        init = tf.global_variables_initializer()
+        init = tf.compat.v1.global_variables_initializer()                                      # replaced tf by tf.compat.v1
         sess.run(init)
 
         ops = {'pointclouds_pl': pointclouds_pl,
@@ -272,7 +274,7 @@ def eval_one_epoch(sess, ops, test_writer):
     
     log_string('eval mean loss: %f' % (loss_sum / float(batch_idx)))
     log_string('eval accuracy: %f'% (total_correct / float(total_seen)))
-    log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float))))
+    log_string('eval avg class acc: %f' % (np.mean(np.array(total_correct_class)/np.array(total_seen_class,dtype=np.float64)))) #replaced np.float by np.float64
     EPOCH_CNT += 1
 
     TEST_DATASET.reset()

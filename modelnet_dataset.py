@@ -9,6 +9,7 @@ import numpy as np
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
+DATA_DIR = "/media/bedad/DATA/ETS/Recherche/programmation/data/pointnet2"
 sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import provider
 
@@ -29,7 +30,7 @@ class ModelNetDataset():
         if modelnet10:
             self.catfile = os.path.join(self.root, 'modelnet10_shape_names.txt')
         else:
-            self.catfile = os.path.join(self.root, 'shape_names.txt')
+            self.catfile = os.path.join(self.root, 'modelnet40_shape_names.txt')  #added modelnet40_ to file name
         self.cat = [line.rstrip() for line in open(self.catfile)]
         self.classes = dict(zip(self.cat, range(len(self.cat))))  
         self.normal_channel = normal_channel
@@ -128,7 +129,8 @@ class ModelNetDataset():
         return batch_data, batch_label
     
 if __name__ == '__main__':
-    d = ModelNetDataset(root = '../data/modelnet40_normal_resampled', split='test')
+    # d = ModelNetDataset(root=ROOT_DIR + '/data/modelnet40_normal_resampled', split='test')  #added ROOT_DIR
+    d = ModelNetDataset(root=DATA_DIR + '/modelnet40_normal_resampled', split='test')  # added ROOT_DIR
     print(d.shuffle)
     print(len(d))
     import time

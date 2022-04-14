@@ -13,14 +13,14 @@ import tf_util
 from pointnet_util import pointnet_sa_module
 
 def placeholder_inputs(batch_size, num_point):
-    pointclouds_pl = tf.placeholder(tf.float32, shape=(batch_size, num_point, 3))
-    labels_pl = tf.placeholder(tf.int32, shape=(batch_size))
+    pointclouds_pl = tf.compat.v1.placeholder(tf.float32, shape=(batch_size, num_point, 3)) # replaced tf by tf.compat.v1
+    labels_pl = tf.compat.v1.placeholder(tf.int32, shape=(batch_size))  # replaced tf by tf.compat.v1
     return pointclouds_pl, labels_pl
 
 def get_model(point_cloud, is_training, bn_decay=None):
     """ Classification PointNet, input is BxNx3, output Bx40 """
-    batch_size = point_cloud.get_shape()[0].value
-    num_point = point_cloud.get_shape()[1].value
+    batch_size = point_cloud.get_shape()[0]    #removed .value
+    num_point = point_cloud.get_shape()[1]     #removed .value
     end_points = {}
     l0_xyz = point_cloud
     l0_points = None
@@ -49,8 +49,8 @@ def get_loss(pred, label, end_points):
         label: B, """
     loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pred, labels=label)
     classify_loss = tf.reduce_mean(loss)
-    tf.summary.scalar('classify loss', classify_loss)
-    tf.add_to_collection('losses', classify_loss)
+    tf.compat.v1.summary.scalar('classify loss', classify_loss)
+    tf.compat.v1.add_to_collection('losses', classify_loss)    # replaced tf by tf.compat.v1
     return classify_loss
 
 

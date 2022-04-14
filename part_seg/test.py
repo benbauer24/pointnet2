@@ -8,9 +8,10 @@ import os
 import scipy.misc
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(BASE_DIR)                                   #Added ROOT_DIR
 sys.path.append(BASE_DIR)
-sys.path.append(os.path.join(BASE_DIR, 'models'))
-sys.path.append(os.path.join(BASE_DIR, 'utils'))
+sys.path.append(os.path.join(ROOT_DIR, 'models'))
+sys.path.append(os.path.join(ROOT_DIR, 'utils'))
 import provider
 import show3d_balls
 sys.path.append(os.path.join(ROOT_DIR, 'data_prep'))
@@ -38,15 +39,15 @@ def get_model(batch_size, num_point):
     with tf.Graph().as_default():
         with tf.device('/gpu:'+str(GPU_INDEX)):
             pointclouds_pl, labels_pl = MODEL.placeholder_inputs(batch_size, num_point)
-            is_training_pl = tf.placeholder(tf.bool, shape=())
+            is_training_pl = tf.compat.v1.placeholder(tf.bool, shape=())                 # replaced tf by tf.compat.v1
             pred, end_points = MODEL.get_model(pointclouds_pl, is_training_pl)
             loss = MODEL.get_loss(pred, labels_pl, end_points)
-            saver = tf.train.Saver()
+            saver = tf.compat.v1.train.Saver()                                          # replaced tf by tf.compat.v1
         # Create a session
-        config = tf.ConfigProto()
+        config = tf.compat.v1.ConfigProto()                                             # replaced tf by tf.compat.v1
         config.gpu_options.allow_growth = True
         config.allow_soft_placement = True
-        sess = tf.Session(config=config)
+        sess = tf.compat.v1.Session(config=config)                                      # replaced tf by tf.compat.v1
         # Restore variables from disk.
         saver.restore(sess, MODEL_PATH)
         ops = {'pointclouds_pl': pointclouds_pl,

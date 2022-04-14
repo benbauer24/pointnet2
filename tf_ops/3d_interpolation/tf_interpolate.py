@@ -2,6 +2,19 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 import sys
 import os
+
+# To allow session to run, add this
+tf.compat.v1.disable_eager_execution()
+
+# # Or uncomment the lines below
+# tf.compat.v1.disable_v2_behavior()
+# tf.compat.v1.global_variables_initializer()
+
+# To check GPU
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+devices = tf.config.list_physical_devices('GPU')
+print(devices)
+
 BASE_DIR = os.path.dirname(__file__)
 sys.path.append(BASE_DIR)
 interpolate_module=tf.load_op_library(os.path.join(BASE_DIR, 'tf_interpolate_so.so'))
@@ -47,13 +60,10 @@ if __name__=='__main__':
         dist, idx = three_nn(xyz1, xyz2)
         weight = tf.ones_like(dist)/3.0
         interpolated_points = three_interpolate(points, idx, weight)
-    with tf.Session('') as sess:
+    with tf.compat.v1.Session('') as sess:       #tf.Session('') replaced by tf.compat.v1.Session('')
         now = time.time() 
         for _ in range(100):
             ret = sess.run(interpolated_points)
-        print time.time() - now
-        print ret.shape, ret.dtype
-        #print ret
-    
-    
-    
+        print(time.time() - now)
+        print(ret.shape, ret.dtype)
+        print(ret)

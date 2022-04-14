@@ -7,6 +7,19 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 import sys
 import os
+
+# To allow session to run, add this
+tf.compat.v1.disable_eager_execution()
+
+# # Or uncomment the lines below
+# tf.compat.v1.disable_v2_behavior()
+# tf.compat.v1.global_variables_initializer()
+
+# To check GPU
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+devices = tf.config.list_physical_devices('GPU')
+print(devices)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 sampling_module=tf.load_op_library(os.path.join(BASE_DIR, 'tf_sampling_so.so'))
@@ -61,29 +74,30 @@ if __name__=='__main__':
     import numpy as np
     np.random.seed(100)
     triangles=np.random.rand(1,5,3,3).astype('float32')
-    with tf.device('/gpu:1'):
+    with tf.device('/gpu:0'):                    #gpu changed for 1 to 0
         inp=tf.constant(triangles)
         tria=inp[:,:,0,:]
         trib=inp[:,:,1,:]
         tric=inp[:,:,2,:]
-        areas=tf.sqrt(tf.reduce_sum(tf.cross(trib-tria,tric-tria)**2,2)+1e-9)
-        randomnumbers=tf.random_uniform((1,8192))
+        areas=tf.sqrt(tf.reduce_sum(tf.linalg.cross(trib-tria,tric-tria)**2,2)+1e-9) # tf.cross changed to tf.linalg.cross
+        randomnumbers=tf.random.uniform((1,8192))     #random_uniform changed to random.uniform
         triids=prob_sample(areas,randomnumbers)
         tria_sample=gather_point(tria,triids)
         trib_sample=gather_point(trib,triids)
         tric_sample=gather_point(tric,triids)
-        us=tf.random_uniform((1,8192))
-        vs=tf.random_uniform((1,8192))
+        us=tf.random.uniform((1,8192))       #random_uniform changed to random.uniform
+        vs=tf.random.uniform((1,8192))       #random_uniform changed to random.uniform
         uplusv=1-tf.abs(us+vs-1)
         uminusv=us-vs
         us=(uplusv+uminusv)*0.5
         vs=(uplusv-uminusv)*0.5
         pt_sample=tria_sample+(trib_sample-tria_sample)*tf.expand_dims(us,-1)+(tric_sample-tria_sample)*tf.expand_dims(vs,-1)
-        print 'pt_sample: ', pt_sample
+        print ('pt_sample: ', pt_sample)
         reduced_sample=gather_point(pt_sample,farthest_point_sample(1024,pt_sample))
-        print reduced_sample
-    with tf.Session('') as sess:
-        ret=sess.run(reduced_sample)
-    print ret.shape,ret.dtype
-    import cPickle as pickle
+        print (reduced_sample)
+    with tf.compat.v1.Session('') as sess:       #tf.Session('') replaced by tf.compat.v1.Session('')
+        ret = sess.run(reduced_sample)
+    print(ret.shape,ret.dtype)
+
+    import pickle #import cPickle as pickle replaced by import pickle
     pickle.dump(ret,open('1.pkl','wb'),-1)

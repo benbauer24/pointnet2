@@ -42,7 +42,7 @@ class PartDataset():
         with open(os.path.join(self.root, 'train_test_split', 'shuffled_test_file_list.json'), 'r') as f:
             test_ids = set([str(d.split('/')[2]) for d in json.load(f)])
         for item in self.cat:
-            #print('category', item)
+            print('category', item)
             self.meta[item] = []
             dir_point = os.path.join(self.root, self.cat[item], 'points')
             dir_seg = os.path.join(self.root, self.cat[item], 'points_label')
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     tic = time.time()
     for i in range(100):
         ps, seg = d[i]
-        print np.max(seg), np.min(seg)
+        print(np.max(seg), np.min(seg))
     print(time.time() - tic)
     print(ps.shape, type(ps), seg.shape,type(seg))
     
